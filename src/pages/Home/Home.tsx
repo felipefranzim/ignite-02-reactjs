@@ -3,6 +3,8 @@ import { CountdownContainer, CountdownSeparator, FormContainer, HomeContainer, M
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as zod from "zod";
+import { useState } from "react";
+import { set } from "zod/v4";
 
 const timerValidationSchema = zod.object({
     task: zod.string().min(1, "Informe a tarefa"),
@@ -13,8 +15,18 @@ const timerValidationSchema = zod.object({
 
 type TimerFormData = zod.infer<typeof timerValidationSchema>;
 
+interface Cycle {
+    id: string;
+    task: string;
+    minutes: number;
+}
+
 export function Home() {
-    const { register, handleSubmit, watch } = useForm<TimerFormData>({
+    const [cycles, setCycles] = useState<Cycle[]>([]);
+    const [activeCycleId, setActiveCycleId] = useState<string | null>(null);
+    const [secondsPassed, setSecondsPassed] = useState<number>(0);
+
+    const { register, handleSubmit, watch, reset } = useForm<TimerFormData>({
         resolver: zodResolver(timerValidationSchema),
         defaultValues: {
             task: '',
@@ -23,11 +35,23 @@ export function Home() {
     });
 
     const task = watch('task');
+    const activeCycle = cycles.find(cycle => cycle.id === activeCycleId);
+    const secods = activeCycle ? activeCycle.minutes * 60 : 0;
+    const currentSeconds = activeCycle ? secods - secondsPassed : 0;
+
+    const minutesLeft = String(Math.floor(currentSeconds / 60)).padStart(2, "0");
+    const secondsLeft = String(currentSeconds % 60).padStart(2, "0");
 
     const submitTask = (data: TimerFormData) => {
-        console.log(data);
-        // Aqui você pode adicionar a lógica para iniciar a contagem regressiva
-        // e armazenar a tarefa no estado ou contexto global, se necessário.
+        const newCycle: Cycle = {
+            id: String(new Date().getTime()), // Unique ID based on timestamp
+            task: data.task,
+            minutes: data.minutes
+        }
+        
+        setCycles((prevCycles) => [...prevCycles, newCycle]);
+        setActiveCycleId(newCycle.id);
+        reset();
     }
 
     return (
@@ -54,11 +78,11 @@ export function Home() {
                     <span>minutos.</span>
                 </FormContainer>
                 <CountdownContainer>
-                    <span>0</span>
-                    <span>0</span>
+                    <span>{minutesLeft[0]}</span>
+                    <span>{minutesLeft[1]}</span>
                     <CountdownSeparator>:</CountdownSeparator>
-                    <span>0</span>
-                    <span>0</span>
+                    <span>{secondsLeft[0]}</span>
+                    <span>{secondsLeft[1]}</span>
                 </CountdownContainer>
 
                 <StartButton disabled={!task} type="submit">
